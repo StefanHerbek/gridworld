@@ -31,12 +31,12 @@ Racetrack <- R6Class(
       
       if (any(endpoint > dim(self$layout)) |
           any(endpoint <= 0)) {
-        self$restart(random_starts)
+        self$restart(random_starts) # race track restarts after crash
         return(-1) # out of bounds
       }
       
       if (self$layout[endpoint[1],endpoint[2]] == 0) {
-        self$restart(random_starts)
+        self$restart(random_starts) # race track restarts after crash
         return(-1) # crash
       }
       
