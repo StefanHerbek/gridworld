@@ -7,7 +7,7 @@ RandomWalker <- R6Class(
       self$velocity = c(0,0)
     }, 
     
-    call = function(pos) {
+    call = function(pos, explore) {
       self$velocity <- sample(c(-1,0,1),2)
       return(self$velocity)
     }
@@ -32,7 +32,6 @@ QWalker <- R6Class(
                           eps = 0.05, gamma = 1, alpha = 0.05, 
                           maxiter = 200) {
       self$velocity = c(0,0)
-      self$maxspeed = maxs
       self$eps = eps
       self$gamma = gamma
       self$alpha = alpha
@@ -50,7 +49,7 @@ QWalker <- R6Class(
     
     gen_qtable = function(layout) {
       qtable <- cbind(
-        which(layout > 0, arr.ind = T),
+        as.data.frame(which(layout > 0, arr.ind = T)),
         matrix(0, nrow = 1, ncol = nrow(self$actions)) # Q init at 0
       )
       
@@ -73,18 +72,18 @@ QWalker <- R6Class(
       # select best action (or explore)
       randnum <- runif(1)
       if (randnum <= self$eps & explore) {
-        bestactions <- self$actions  
+        bestactions <- self$actions
       } else {
         qvals <- self$thisQ(position)
         bestactions <- self$actions[qvals == max(qvals), ]
       }
       
-      bestaction <- bestactions[sample(1:nrow(bestactions),1), ]
+      bestaction <- bestactions[sample(1:nrow(bestactions),1), ,drop = F]
       bestaction <- c(bestaction[ ,1], bestaction[ ,2])
       
-      self$lasta <- c(bestaction[ ,1], bestaction[ ,2])
+      self$lasta <- bestaction
       
-      self$velocity <- c(bestaction[ ,1], bestaction[ ,2])
+      self$velocity <- bestaction
       return(self$velocity)
       
     },
@@ -105,7 +104,7 @@ QWalker <- R6Class(
         print("*")
       } else if (result == -1) {
         reward <- reward + stick
-        newq   <- unique(max(self$thistQ(newpos)))
+        newq   <- unique(max(self$thisQ(newpos)))
       } else {
         newq <- unique(max(self$thisQ(newpos)))
       }

@@ -11,7 +11,7 @@ RandomRacer <- R6Class(
       self$maxacc   = maxa
     }, 
     
-    call = function(pos) {
+    call = function(pos, explore) {
       change <- sample(c(-self$maxacc,self$maxacc),2)
       self$velocity <- self$accelerate(change)
       return(self$velocity)
@@ -108,7 +108,7 @@ QRacer <- R6Class(
         bestactions <- self$actions[qvals == max(qvals), ]
       }
       
-      bestaction <- bestactions[sample(1:nrow(bestactions),1), ]
+      bestaction <- bestactions[sample(1:nrow(bestactions),1), ,drop = F]
       bestaction <- c(bestaction[ ,1], bestaction[ ,2])
       
       self$lasta <- bestaction
