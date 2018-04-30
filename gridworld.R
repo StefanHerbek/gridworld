@@ -1,7 +1,7 @@
 library(R6)
 library(ggplot2)
 library(reshape2)
-library(animation)
+library(animation) # for animations
 
 Gridworld <- R6Class(
   "gridworld",
