@@ -1,7 +1,8 @@
 library(R6)
 library(ggplot2)
 library(reshape2)
-library(animation) # for animations
+library(animation)
+library(gganimate)
 
 Gridworld <- R6Class(
   "gridworld",
@@ -9,6 +10,20 @@ Gridworld <- R6Class(
     layout = NULL,
     state = NULL,
     controller = NULL,
+    theme = theme(
+      plot.background = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.background = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      legend.position = "none"
+    ), # for ggplot
     
     initialize = function(lout,cntrl) {
       self$layout = lout
@@ -17,7 +32,7 @@ Gridworld <- R6Class(
     },
     
     restart = function(random = 0.2) {
-      
+      "To initial state"
       if (runif(1) < random) {
         M <- which(self$layout > 0, arr.ind = T) # any non wall or goal
         v1 <- sample(-1:1, 1)
@@ -34,7 +49,7 @@ Gridworld <- R6Class(
     },
     
     move = function(explore = T, random_starts = 0) {
-      
+      "Query the controller for the next move"
       velocity = self$controller$call(self$state, explore)
       endpoint = self$state + velocity
       
@@ -57,12 +72,17 @@ Gridworld <- R6Class(
       }
     },
     
-    lap = function(plt = F) {
+    lap = function(plt = F, animate = F) {
+      "Do one lap around the gridworld"
       self$restart(random = 0)
       stat <- 0
       
       if (plt) {
         dev.new()
+      }
+      
+      if (animate) {
+        grids <- list()
       }
       
       while (stat == 0) {
@@ -72,16 +92,24 @@ Gridworld <- R6Class(
           print(g)
           Sys.sleep(1.4)
         }
+        if (animate) {
+          grids[[length(grids) + 1]] <- self$showgrid(returnGrid = T)
+        }
         stat <- self$move(explore = F, random_starts = 0)
         print(stat)
+      }
+      
+      if (animate) {
+        self$animategrid(grids)
       }
     },
     
     train = function(laplim = 80, stick = 0, carrot = 0) {
+      "Train the controller"
       stopcond <- T
       self$controller$iter <- 0
       self$controller$converged <- FALSE
-      while(stopcond) {
+      while (stopcond) {
         self$restart(random = 1)
         result <- 0
         laptim <- 0
@@ -98,21 +126,8 @@ Gridworld <- R6Class(
       }
     },
     
-    showgrid = function() {
-      blank_theme <- theme(
-        plot.background = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_blank(),
-        axis.ticks = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        legend.position="none"
-      )
+    showgrid = function(returnGrid = F) {
+      "Plots the gridworld"
       
       cols <- c("-1" = "lightgreen", "0" = "gray", 
                 "1" = "white", "2" = "cyan", "4" = "yellow")
@@ -120,15 +135,36 @@ Gridworld <- R6Class(
       grid <- self$layout
       grid[self$state[1],self$state[2]] <- 4
       
+      if (returnGrid) return(grid)
+      
       g <- ggplot(melt(grid), aes(Var1, Var2)) + 
-        geom_tile(aes(fill = as.factor(value)), color = "gray") + blank_theme +
+        geom_tile(aes(fill = as.factor(value)), color = "gray") + self$theme +
         scale_fill_manual(values = cols)
       g
     },
     
+    animategrid = function(grids) {
+      "Animates a series of grid layouts"
+      
+      grids  <- lapply(grids, melt) # flatten arrays
+      frames <- rep(1:length(grids), each = sapply(grids, nrow))
+      
+      Grids  <- Reduce(rbind, grids) # combine all
+      Grids$frame <- frames # add frame identifier
+      
+      cols <- c("-1" = "lightgreen", "0" = "gray", 
+                "1" = "white", "2" = "cyan", "4" = "yellow")
+      
+      g <- ggplot(Grids, aes(Var1, Var2, frame = frame)) + 
+        geom_tile(aes(fill = as.factor(value)), color = "gray") + self$theme +
+        scale_fill_manual(values = cols)
+      return(g)
+    },
+    
     perpeto = function(frames = 20) {
+      "Do multiple laps"
       frame <- 1
-      while(frame <= frames){
+      while (frame <= frames) {
         self$lap(plt = T)
         frame <- frame + 1
       }
